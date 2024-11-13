@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview CV with Photo</title>
+    <style>
+        /* Styling for mobile-friendly canvas */
+        #canvasContainer {
+            width: 100%;
+            max-width: 400px; /* Mobile-friendly max width */
+            margin: auto;
+            position: relative;
+            border: 1px solid #ddd;
+        }
+        #canvas {
+            width: 100%;
+        }
+        #draggablePhoto {
+            position: absolute;
+            width: 80px; /* Smaller width of photo */
+            height: 80px; /* Smaller height of photo */
+            top: 10px;     /* Positioning at the top */
+            right: 10px;   /* Positioning at the right */
+            cursor: move;
+            border: 2px solid #666;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        #draggablePhoto img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Upload CV Image:</h2>
+    <input type="file" id="cvImageUpload" accept="image/*">
+    <h2>Upload Your Photo:</h2>
+    <input type="file" id="photoUpload" accept="image/*">
+    <br><br>
+
+    <div id="canvasContainer">
+        <!-- Canvas for CV image -->
+        <canvas id="canvas"></canvas>
+        
+        <!-- Draggable photo element positioned at top-right -->
+        <div id="draggablePhoto" style="display:none;">
+            <img id="photoImage" alt="Draggable Photo">
+        </div>
+    </div>
+
+    <br>
+    <!-- Button to download the PDF -->
+    <button onclick="downloadPDF()">Download PDF</button>
+
+    <!-- Include the jsPDF and html2canvas libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+
+    <script>
+        let cvImage = null;
+
+        // Load CV Image
+        document.getElementById('cvImageUpload').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    cvImage = new Image();
+                    cvImage.onload = drawCVImage;
+                    cvImage.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                alert("Please select an image file for CV.");
+            }
+        });
+
+        // Load and Display Draggable User Photo
+        document.getElementById('photoUpload').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('photoImage').src = e.target.result;
+                    document.getElementById('draggablePhoto').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                alert("Please select an image file for your photo.");
+            }
+        });
+
+        // Function to draw CV image on canvas
+        function drawCVImage() {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = cvImage.width;
+            canvas.height = cvImage.height;
+            ctx.drawImage(cvImage, 0, 0);
+        }
+
+        // Make the photo draggable
+        let isDragging = false;
+        let offsetX, offsetY;
+
+        const draggablePhoto = document.getElementById('draggablePhoto');
+        draggablePhoto.addEventListener('mousedown', (event) => {
+            isDragging = true;
+            const rect = draggablePhoto.getBoundingClientRect();
+            offsetX = event.clientX - rect.left;
+            offsetY = event.clientY - rect.top;
+        });
+
+        document.addEventListener('mousemove', (event) => {
+            if (isDragging) {
+                draggablePhoto.style.left = (event.clientX - offsetX) + 'px';
+                draggablePhoto.style.top = (event.clientY - offsetY) + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        // Function to download the canvas and photo as PDF
+        function downloadPDF() {
+            html2canvas(document.getElementById('canvasContainer')).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF();
+
+                // Fit image within PDF page
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save("cv_with_photo.pdf");
+            });
+        }
+    </script>
+
+</body>
+</html>
